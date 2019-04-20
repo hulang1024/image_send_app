@@ -4,6 +4,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
+const config = require('./config');
 
 // Init app
 const app = express();
@@ -53,19 +54,25 @@ app.post('/upload', (req, res) => {
     filenames = [filenames];
   }
 
-  const today = moment().format('YYYY-MM-DD');
-  let seq = 1;
-  if (!fs.existsSync(`images/${today}`)) {
-    fs.mkdirSync(`images/${today}`);
-  } else {
-    seq = fs.readdirSync(`images/${today}`).length + 1;
-  }
+  const mkdirsSync = (dirname) => {
+    if (fs.existsSync(dirname)) {
+      return true;
+    } else {
+      if (mkdirsSync(path.dirname(dirname))) {
+        fs.mkdirSync(dirname);
+        return true;
+      }
+    }
+  };
 
-  if (!fs.existsSync(`images/${today}/${seq}`)) {
-    fs.mkdirSync(`images/${today}/${seq}`);
-  }
+  const imagesDir = config.imagesDir;
+  const today = moment().format('YYYY-MM-DD');
+  const todayDirName = path.join(imagesDir, `/${today}`);
+  mkdirsSync(todayDirName);
+  let seq = fs.readdirSync(todayDirName).length + 1;
+  mkdirsSync(`${todayDirName}/${seq}`);
   filenames.forEach((filename, index) => {
-    fs.rename(`public/uploads/${filename}`, `images/${today}/${seq}/${filename}`, () => {});
+    fs.rename(`public/uploads/${filename}`, `${todayDirName}/${seq}/${filename}`, () => {});
   });
   res.json({success: true});
 });
