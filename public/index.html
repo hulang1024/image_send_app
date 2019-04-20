@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>发送打印图片</title>
+  <style>
+    input[type=file] {
+      display: none;
+    }
+
+    .button {
+      height: 40px;
+      padding: 0 15px;
+      font-size: 16px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      color: #fff;
+      text-align: center;
+      cursor: pointer;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.015);
+      transition: all .3s cubic-bezier(.645, .045, .355, 1);
+      outline: none;
+    }
+    .button.default {
+      color: rgba(0,0,0,0.65);
+      background-color: #fff;
+      border-color: #d9d9d9;
+    }
+    .button.primary {
+      background-color: dodgerblue;
+      border-color: dodgerblue;
+    }
+
+    body {
+      position: absolute;
+      height: 100%;
+      width: 100%;
+      margin: 0px;
+      padding: 0px;
+      overflow: hidden;
+    }
+
+    .image-list {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      height: 200px;
+      max-height: 200px;
+      overflow-y: scroll;
+    }
+
+    .image-list > div {
+      width: 80px;
+      height: 80px;
+      margin: 0px 2px 2px 0px;
+    }
+
+    .image-list > div > img {
+      width: 80px;
+      height: 80px;
+    }
+  </style>
+</head>
+<body>
+  <input
+    id="fileUpload"
+    type="file"
+    accept="image/*"
+    multiple="multiple"
+    onchange="onFileUploadChange()">
+
+  <div
+    style="
+      position: relative;
+      top: 2%;
+      margin: 0px 16px;
+    "
+  >
+    <div id="image-list" class="image-list"> 
+    </div>
+    <div
+      style="
+        text-align: center;
+        padding: 0px 0px 32px 0px;
+      "
+    >
+      <p>共 <span id="selectedImageCount" style="font-size: 16px; font-weight: bold;">0</span> 张图片</p>
+      <p style="color: #777;line-height: 0px;">(点击图片以取消选择)</p>
+    </div>
+    <button
+      class="button default"
+      onclick="onSelectClick()"
+      style="
+        display: block;
+        position: relative;
+        width: 100%;
+      "
+    >选择图片</button>
+
+    <button
+      id="ok"
+      class="button primary"
+      style="
+        display: block;
+        position: relative;
+        margin-top: 32px;
+        width: 100%;
+      "
+      >确定发送</button>
+  </div>
+
+  <script>
+    var selectedFiles = []; // 累计选择的文件，以解决部分手机不支持多选而分多次选择
+
+    function clearSelectedFiles() {
+      selectedFiles.length = 0;
+      updateSelectedImageCount();
+
+      var imageList = document.getElementById('image-list');
+      imageList.innerHTML = '';
+    }
+
+    function appendImageToList(uploadRet, file) {
+      var imageList = document.getElementById('image-list');
+      var div = document.createElement('div');
+      div.onclick = function() {
+        for (var i = 0; i < selectedFiles.length; i++) {
+          if (selectedFiles[i].name == file.name) {
+            selectedFiles.splice(i, 1);
+            deletePreview(uploadRet.filename);
+            imageList.removeChild(imageList.children[i]);
+            updateSelectedImageCount();
+            break;
+          }
+        }
+      };
+      var img = document.createElement('img');
+      img.src = 'uploads/' + uploadRet.filename;
+      div.appendChild(img);
+      imageList.appendChild(div);
+      updateSelectedImageCount();
+    }
+
+    function onFileUploadChange() {
+      var fileUpload = document.getElementById('fileUpload');
+  
+      for (var i = 0; i < fileUpload.files.length; i++) {
+        var file = fileUpload.files[i];
+        selectedFiles.push(file);
+        uploadPreview(file);
+      }
+    }
+
+    function updateSelectedImageCount() {
+      document.getElementById('selectedImageCount').innerHTML = selectedFiles.length;
+    }
+
+    function onSelectClick() {
+      document.getElementById('fileUpload').click();
+    }
+
+    window.onload = function() {
+      document.getElementById('ok').onclick = function() {
+        if (this.loading) {
+          return;
+        }
+
+        var files = selectedFiles;
+        if (files.length < 1) {
+          alert('请先选择图片');
+          return;
+        }
+
+        var params = '';
+        for (var i = 0; i < files.length; i++) {
+          params += 'filename=' + files[i].uploadFilename + '&';
+        }
+        //this.loading = true;
+        var req = new XMLHttpRequest();
+        req.open('POST', '/upload');
+        req.setRequestHeader("Content-Type","application/x-www-form-urlencoded");
+        req.onload = function() {
+          if (req.status == 200) {
+            var ret = JSON.parse(req.responseText);
+            if (ret.success) {
+              alert('发送成功！');
+              clearSelectedFiles();
+            }
+          }
+          this.loading = false; 
+        }
+        req.send(params);
+      };
+    };
+
+    function uploadPreview(file) {
+      var formData = new FormData();
+      formData.append("image", file);
+      var req = new XMLHttpRequest();
+      req.addEventListener('load', function(event) {
+        if (req.status == 200) {
+          var ret = JSON.parse(req.responseText);
+          if (ret.success) {
+            file.uploadFilename = ret.filename;
+            appendImageToList(ret, file);
+          }
+        }
+      });
+      req.open('POST', '/preview/upload');
+      req.send(formData);
+    }
+
+    function deletePreview(filename) {
+      var req = new XMLHttpRequest();
+      req.open('POST', '/preview/delete?filename=' + filename);
+      req.send();
+    }
+  </script>
+</body>
+</html>
