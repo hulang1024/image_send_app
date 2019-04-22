@@ -1,5 +1,5 @@
 @echo off
-
-start /b node app.js
-
-@echo "OK"
+if "%1" == "h" goto begin
+mshta vbscript:createobject("wscript.shell").run("%~nx0 h",0)(window.close)&&exit
+:begin
+start /min /b node app.js
