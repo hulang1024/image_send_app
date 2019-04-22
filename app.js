@@ -72,7 +72,14 @@ app.post('/upload', (req, res) => {
   let seq = fs.readdirSync(todayDirName).length + 1;
   mkdirsSync(`${todayDirName}/${seq}`);
   filenames.forEach((filename, index) => {
-    fs.rename(`public/uploads/${filename}`, `${todayDirName}/${seq}/${filename}`, () => {});
+    fs.rename(
+      `public/uploads/${filename}`,
+      `${todayDirName}/${seq}/${filename}`,
+      (e) => {
+        if (e) {
+          console.log(e);
+        }
+      });
   });
   res.json({success: true});
 });
